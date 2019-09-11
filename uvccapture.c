@@ -22,6 +22,8 @@
 #                                                                              #
 *******************************************************************************/
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,6 +35,7 @@
 #include <linux/videodev2.h>
 #include <assert.h>
 #include <stdint.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/mman.h>
@@ -124,6 +127,7 @@ usage (void)
   fprintf (stderr, "-C<integer>\tContrast\n");
   fprintf (stderr, "-S<integer>\tSaturation\n");
   fprintf (stderr, "-G<integer>\tGain\n");
+  fprintf (stderr, "-Q\tUse direct mode when saving files (slower)\n");
   exit (8);
 }
 
@@ -251,7 +255,7 @@ spawn (char *argv[], int wait, int verbose)
   return rv;
 }
 
-int save_yuyv3(struct vdIn *vd, const char *filename)
+int save_yuyv3(struct vdIn *vd, const char *filename, int nobuff)
 {
    int out;
    uint16_t tmp;
@@ -262,7 +266,7 @@ int save_yuyv3(struct vdIn *vd, const char *filename)
    int remaining, target;
 
    gettimeofday(&start, NULL);
-   out = open(filename, O_RDWR | O_CREAT, 0644);
+   out = open(filename, O_RDWR | O_CREAT | (nobuff ? O_DIRECT:0), 0644);
    printf("** Filename : %s\n\r", filename);
    if (out < 0) {
       perror("Error opening snap.yuv");
@@ -309,7 +313,7 @@ int save_yuyv3(struct vdIn *vd, const char *filename)
    return 0;
 }
 
-int save_yuyv(struct vdIn *vd, const char *filename)
+int save_yuyv(struct vdIn *vd, const char *filename, int nobuff)
 {
    int out;
    uint16_t tmp;
@@ -317,7 +321,7 @@ int save_yuyv(struct vdIn *vd, const char *filename)
    struct timeval start, end;
 
    gettimeofday(&start, NULL);
-   out = open(filename, O_RDWR | O_CREAT, 0644);
+   out = open(filename, O_RDWR | O_CREAT | (nobuff ? O_DIRECT:0), 0644);
    printf("** Filename : %s\n\r", filename);
    if (out < 0) {
       perror("Error opening snap.yuv");
@@ -857,6 +861,7 @@ main (int argc, char *argv[])
   int save_yuyv_data = 1;
   int error = 0;
   int dbg = 0;
+  int nobuff = 1;
 
   (void) regsignal (SIGINT, sigcatch);
   (void) regsignal (SIGQUIT, sigcatch);
@@ -995,6 +1000,10 @@ main (int argc, char *argv[])
 
    case 'f':
       flash_gpio_active_val = atoi(&argv[1][2]);
+      break;
+
+   case 'Q':
+      nobuff = 1;
       break;
 
     default:
@@ -1201,7 +1210,7 @@ main (int argc, char *argv[])
       if (convert_yuv_to_ppm)
          error = error || convert_yuyv_to_ppm(videoIn, ppmOutnameBuff);
       if (save_yuyv_data)
-         error = error || save_yuyv(videoIn, yuvOutnameBuff);
+         error = error || save_yuyv(videoIn, yuvOutnameBuff, nobuff);
 	  break;
 
    case V4L2_PIX_FMT_MJPEG:
