@@ -773,13 +773,13 @@ convert_yuyv_to_ppm (struct vdIn *vd, char * filename)
 #define CAP(x) ((x) < 0 ? 0 : ((x) > 255 ? 255 : (x)) )
 
       if (z++) {
-	z = 0;
-	yuyv += 4;
+	    z = 0;
+	    yuyv += 4;
       }
     }
 
+    write(fd, line_buffer, 3*vd->width);
   }
-  write(fd, line_buffer, 3*vd->width);
   free (line_buffer);
   // munmap(line_buffer, tot_len);
   close(fd);
