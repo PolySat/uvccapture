@@ -47,6 +47,9 @@
 
 // #define JPEG_POSIX_DEST
 
+#define DEFAULT_WIDTH = 320
+#define DEFAULT_HEIGHT = 240
+
 static const char version[] = VERSION;
 int run = 1;
 static char **cameraNames = NULL;
@@ -95,39 +98,40 @@ usage (void)
   fprintf (stderr, "-m\t\tCapture and save image in raw YUV format\n");
   fprintf (stderr, "-M\t\tOnly capture (don't save) image in raw YUV format\n");
   fprintf (stderr, "-j\t\tCompress YUV to JPEG after capture\n");
-  fprintf (stderr, "-b<filename>\t\tCompress YUV to JPEG capture with preexisting image\n");
+  fprintf (stderr, "-b <filename>\t\tCompress YUV to JPEG capture with preexisting image\n");
   fprintf (stderr, "-p\t\tConvert YUV to PPM after capture\n");
   fprintf (stderr, "-L\t\tList Input Sources and exit\n");
   fprintf (stderr, "-N\t\tSet the input camera to the given named camera\n");
   fprintf (stderr, "-R\t\tRotate cameras between images.\n");
-  fprintf (stderr, "-T<seconds>\t\tTerminate the process after <seconds> seconds.  Uses SIGALRM.\n");
-  fprintf (stderr, "-o<filename>\tOutput filename(default: snap.jpg)\n");
-  fprintf (stderr, "-d<device>\tV4L2 Device(default: /dev/video0)\n");
-  fprintf (stderr, "-D<integer>\tDelay (s) before taking first image\n");
-  fprintf (stderr, "-F<integer>\tUse GPIO <integer> as flash\n");
-  fprintf (stderr, "-f<integer>\tSet flash active value to <integer>\n");
+  fprintf (stderr, "-T <seconds>\t\tTerminate the process after <seconds> seconds.  Uses SIGALRM.\n");
+  fprintf (stderr, "-o <filename>\tOutput filename(default: snap.jpg)\n");
+  fprintf (stderr, "-d <device>\tV4L2 Device(default: /dev/video0)\n");
+  fprintf (stderr, "-D <integer>\tDelay (s) before taking first image\n");
+  fprintf (stderr, "-F <integer>\tUse GPIO <integer> as flash\n");
+  fprintf (stderr, "-f <integer>\tSet flash active value to <integer>\n");
   fprintf (stderr,
-	   "-x<width>\tImage Width(must be supported by device)(>960 activates YUYV capture)\n");
+	   "-x <width>\tImage Width(must be supported by device)(>960 activates YUYV capture)\n");
   fprintf (stderr,
-	   "-y<height>\tImage Height(must be supported by device)(>720 activates YUYV capture)\n");
+	   "-y <height>\tImage Height(must be supported by device)(>720 activates YUYV capture)\n");
   fprintf (stderr,
-	   "-c<command>\tCommand to run after each image capture(executed as <command> <output_filename>)\n");
+	   "-c <command>\tCommand to run after each image capture(executed as <command> <output_filename>)\n");
   fprintf (stderr,
-	   "-t<integer>\tTake continuous shots with <integer> seconds between them (0 for single shot)\n");
+	   "-t <integer>\tTake continuous shots with <integer> seconds between them (0 for single shot)\n");
   fprintf (stderr,
-	   "-q<percentage>\tJPEG Quality Compression Level (activates YUYV capture)\n");
-  fprintf (stderr, "-r\t\tUse read instead of mmap for image capture\n");
+	   "-q <percentage>\tJPEG Quality Compression Level (activates YUYV capture)\n");
+  fprintf (stderr, "-r\tUse read instead of mmap for image capture\n");
   fprintf (stderr,
-	   "-w\t\tWait for capture command to finish before starting next capture\n");
+	   "-w\tWait for capture command to finish before starting next capture\n");
   fprintf (stderr,
-	   "-D<integer>\tDelay <integer> seconds before capturing\n");
+	   "-D <integer>\tDelay <integer> seconds before capturing\n");
   fprintf (stderr,
-	   "-n<integer>\tTake only <integer> images.  Default is 1.\n");
+	   "-n <integer>\tTake only <integer> images.  Default is 1.\n");
   fprintf (stderr, "Camera Settings:\n");
-  fprintf (stderr, "-B<integer>\tBrightness\n");
-  fprintf (stderr, "-C<integer>\tContrast [Not supported by current camera]\n");
-  fprintf (stderr, "-S<integer>\tSaturation\n");
-  fprintf (stderr, "-G<integer>\tGain [Not supported by current camera]\n");
+  fprintf (stderr, "-A\tUse Auto Exposure")
+  fprintf (stderr, "-B <integer>\tBrightness\n");
+  fprintf (stderr, "-C <integer>\tContrast [Not supported by current camera]\n");
+  fprintf (stderr, "-S <integer>\tSaturation [Not supported by current camera]\n");
+  fprintf (stderr, "-G <integer>\tGain [Not supported by current camera]\n");
   fprintf (stderr, "-Q\tUse direct mode when saving files (slower)\n");
   exit (8);
 }
@@ -375,104 +379,6 @@ save_raw_jpeg (struct vdIn *vd, const char *filename)
    close(out);
 
    return 0;
-
-#if 0
-   // Raw MMAP memory: vd->mem[vd->buf.index]
-   // Total bytes: vd->buf.bytesused
-   uint16_t *frame = vd->framebuffer;
-   int line = 0;
-   FILE *dbg_out = fopen("snap.raw", "w");
-   /*
-   printf("Debug compress\n");
-   for (int i = 0; i < 128; i++) {
-      if (i) {
-         if (i % 8 == 0)
-            printf("\n");
-         else if (i % 2 == 0)
-            printf("  ");
-         else // if (i % 1 == 0)
-            printf(" ");
-      }
-
-      printf("%03X(%d)", (frame[i] >> 4), (frame[i] >> 4));
-   }
-   printf("\n\n");
-   */
-
-  uint8_t buff[2048];
-  int buff_off = 0;
-   uint32_t *intframe = vd->framebuffer;
-   uint32_t *pix_curs;
-   int pic_len = 0;
-
-   for (int line = 0; line < vd->height; line++) {
-       uint32_t *line_curs = &frame[line * vd->width];
-
-      uint16_t p0 = (*line_curs >> 20) & 0xFFFF;
-      uint16_t p1 = (*line_curs >> 4) & 0xFFFF;
-      // uint16_t data_len = (((p0 >> 2) & 0xFF) << 8) | ((p1 >> 2) & 0xFF);
-      uint16_t data_len = (((p0 ) & 0xFF) << 8) | ((p1) & 0xFF);
-      pic_len += data_len;
-      printf("data len: %d\n", data_len);
-      // First two bytes (the data length) don't count
-      data_len += 2;
-      for (int pix = 2; pix < data_len; pix += 2) {
-         pix_curs = &line_curs[pix / 2];
-         p0 = (*pix_curs >> 20) & 0xFFFF;
-         p1 = (*pix_curs >> 4) & 0xFFFF;
-
-         if (buff_off + 2 >= sizeof(buff)) {
-	         fwrite (buff, buff_off, 1, file);
-            buff_off = 0;
-         }
-         // buff[buff_off++] = (p0 >> 2) & 0xFF;
-         buff[buff_off++] = (p0 ) & 0xFF;
-         if (pix + 1 < data_len)
-            buff[buff_off++] = (p1 ) & 0xFF;
-            // buff[buff_off++] = (p1 >> 2) & 0xFF;
-      }
-   }
-   if (buff_off) {
-	  fwrite (buff, buff_off, 1, file);
-     buff_off = 0;
-   }
-
-   printf("Pic Len: %d\n", pic_len);
-
-   for (int i = 0; i < vd->buf.length / 4; i++, line++) {
-      uint16_t p0 = (intframe[i] >> 20) & 0xFFFF;
-      uint16_t p1 = (intframe[i] >> 4) & 0xFFFF;
-      // uint16_t p0 = intframe[i] & 0xFF;
-      // uint16_t p1 = intframe[i+1] & 0xFF;
-
-      if (buff_off + 2 >= sizeof(buff)) {
-	      fwrite (buff, buff_off, 1, dbg_out);
-         buff_off = 0;
-      }
-
-      /*
-      if (i) {
-         if (i % 8 == 0)
-            printf ("\n");
-         else 
-            printf(" ");
-      }
-      printf("%02X %02X", p0 & 0xFF, p1 & 0xFF);
-      */
-      buff[buff_off++] = (p0 ) & 0xFF;
-      buff[buff_off++] = (p1 ) & 0xFF;
-      // buff[buff_off++] = (p0 >> 2) & 0xFF;
-      // buff[buff_off++] = (p1 >> 2) & 0xFF;
-      // buff[buff_off++] = rev_byte((p0) & 0xFF);
-      // buff[buff_off++] = rev_byte((p1) & 0xFF);
-   }
-   if (buff_off) {
-	  fwrite (buff, buff_off, 1, dbg_out);
-     buff_off = 0;
-   }
-
-   // printf("\n");
-#endif
 }
 
 #ifdef JPEG_POSIX_DEST
@@ -939,7 +845,7 @@ main (int argc, char *argv[])
             break;
 
          case 'A':
-            ov_autogain = atoi(optarg);
+            ov_autogain = 1;
             break;
 
          case 'B':
@@ -955,7 +861,7 @@ main (int argc, char *argv[])
             break;
 
          case 'F':
-            initGPIO(0, atoi(optarg, &flashGpio);
+            initGPIO(0, atoi(optarg), &flashGpio);
             break;
 
          case 'G':
@@ -1070,8 +976,19 @@ main (int argc, char *argv[])
    exit(0);
   }
 
-  if (width > 0 && height > 0 &&
-      v4l2TryFormat(videoIn, width, height, format) < 0)
+  if(width <= 0){
+     fprintf(stderr, "Invalid width, setting to defualt \n");
+     width = DEFAULT_WIDTH
+  }
+
+  if(height <= 0){
+     fprintf(stderr, "Invalid height, setting to defualt \n");
+     height = DEFAULT_HEIGHT
+  }
+
+
+
+  if (v4l2TryFormat(videoIn, width, height, format) < 0)
   {
      fprintf(stderr, "Error in v4l2TryFormat\n");
   }
