@@ -39,6 +39,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/mman.h>
+#include <getopt.h>
 
 #include "v4l2uvc.h"
 #include "libjpeg_soft.h"
@@ -124,9 +125,9 @@ usage (void)
 	   "-n<integer>\tTake only <integer> images.  Default is 1.\n");
   fprintf (stderr, "Camera Settings:\n");
   fprintf (stderr, "-B<integer>\tBrightness\n");
-  fprintf (stderr, "-C<integer>\tContrast\n");
+  fprintf (stderr, "-C<integer>\tContrast [Not supported by current camera]\n");
   fprintf (stderr, "-S<integer>\tSaturation\n");
-  fprintf (stderr, "-G<integer>\tGain\n");
+  fprintf (stderr, "-G<integer>\tGain [Not supported by current camera]\n");
   fprintf (stderr, "-Q\tUse direct mode when saving files (slower)\n");
   exit (8);
 }
@@ -625,16 +626,6 @@ compress_yuyv_to_jpeg (struct vdIn *vd, const char *filename, int quality)
       r = (y + (359 * v)) >> 8;
       g = (y - (88 * u) - (183 * v)) >> 8;
       b = (y + (454 * u)) >> 8;
-#define CAP(x) ((x) < 0 ? 0 : ((x) > 255 ? 255 : (x)) )
-
-      // fprintf(gsPpm, "%d\n", y >> 8);
-
-      /*
-      if (cnt < 4 && !z) {
-         printf("%02X %02X %02X %02X ", yuyv[0], yuyv[1], yuyv[2], yuyv[3]);
-         cnt++;
-      }
-      */
 
       *(ptr++) = (r > 255) ? 255 : ((r < 0) ? 0 : r);
       *(ptr++) = (g > 255) ? 255 : ((g < 0) ? 0 : g);
@@ -770,7 +761,6 @@ convert_yuyv_to_ppm (struct vdIn *vd, char * filename)
 
       b = (y + (454 * u)) >> 8;
       *ptr++ = (b > 255) ? 255 : ((b < 0) ? 0 : b);
-#define CAP(x) ((x) < 0 ? 0 : ((x) > 255 ? 255 : (x)) )
 
       if (z++) {
 	    z = 0;
@@ -861,7 +851,7 @@ main (int argc, char *argv[])
   int save_yuyv_data = 1;
   int error = 0;
   int dbg = 0;
-  int nobuff = 1;
+  int nobuff = 0;
 
   (void) regsignal (SIGINT, sigcatch);
   (void) regsignal (SIGQUIT, sigcatch);
@@ -877,144 +867,138 @@ main (int argc, char *argv[])
   post_capture_command[1] = NULL;
   post_capture_command[2] = NULL;
 
-  //Options Parsing (FIXME)
-  while ((argc > 1) && (argv[1][0] == '-')) {
-    switch (argv[1][1]) {
-    case 'v':
-      verbose++;
-      break;
+  while((opt = getopt(argc, argv, ":b:c:d:f:hjmn:o:pq:rtvwx:y:A:B:C:D:F:G:LMN:QRS:T:Z:")) != -1) {
+     switch(opt){
+         case 'b':
+            yuyv_file = optarg;
+            break;
 
-    case 'N':
-      camera_name = &argv[1][2];
-      break;
+         case 'c':
+            post_capture_command[0] = optarg;
+            break;
 
-    case 'o':
-      outputfile = &argv[1][2];
-      break;
+         case 'd':
+            videodevice = optarg;
+            break;
 
-    case 'd':
-      videodevice = &argv[1][2];
-      break;
+         case 'f':
+            flash_gpio_active_val = atoi(optarg);
+            break;
+         
+         case 'h':
+            usage ();
+            break;
 
-    case 'x':
-      width = atoi (&argv[1][2]);
-      break;
+         case 'j':
+            soft_compress_yuv = 1;
+            break;
 
-    case 'y':
-      height = atoi (&argv[1][2]);
-      break;
+         case 'm':
+            format = V4L2_PIX_FMT_YUYV;
+            save_yuyv_data = 1;
+            break;
+         
+         case 'n':
+            target_img_cnt = image_cnt = atoi(optarg);
+            break;
 
-    case 'r':
-      grabmethod = 0;
-      break;
+         case 'o':
+            outputfile = optarg;
+            break;
 
-    case 'b':
-      yuyv_file = &argv[1][2];
-      break;
+         case 'p':
+            convert_yuv_to_ppm = 1;
+            break;
 
-    case 'm':
-      format = V4L2_PIX_FMT_YUYV;
-      save_yuyv_data = 1;
-      break;
+         case 'q':
+            quality = atoi(optarg);
+            break;
 
-    case 'M':
-      format = V4L2_PIX_FMT_YUYV;
-      save_yuyv_data = 0;
-      break;
+         case 'r':
+            grabmethod = 0;
+            break;
 
-    case 'j':
-      soft_compress_yuv = 1;
-      break;
+         case 't':
+            delay = atoi (optarg);
+            break;
 
-    case 'p':
-      convert_yuv_to_ppm = 1;
-      break;
+         case 'v':
+            verbose++;
+            break;
 
-    case 't':
-      delay = atoi (&argv[1][2]);
-      break;
+         case 'w':
+            post_capture_command_wait = 1;
+            break;
 
-    case 'D':
-      start_delay = atoi (&argv[1][2]);
-      break;
+         case 'x':
+            width = atoi (optarg);
+            break;
 
-    case 'n':
-        target_img_cnt = image_cnt = atoi(&argv[1][2]);
-        break;
+         case 'y':
+            height = atoi (optarg);
+            break;
 
-    case 'c':
-      post_capture_command[0] = &argv[1][2];
-      break;
+         case 'A':
+            ov_autogain = atoi(optarg);
+            break;
 
-    case 'w':
-      post_capture_command_wait = 1;
-      break;
+         case 'B':
+            brightness = atoi (optarg);
+            break;
 
-    case 'Z':
-      dbg = atoi(&argv[1][2]);
-      break;
+         case 'C':
+            contrast = atoi (optarg);
+            break;
 
-    case 'A':
-      ov_autogain = atoi(&argv[1][2]);
-      break;
+         case 'D':
+            start_delay = atoi (optarg);
+            break;
 
-    case 'B':
-      brightness = atoi (&argv[1][2]);
-      break;
+         case 'F':
+            initGPIO(0, atoi(optarg, &flashGpio);
+            break;
 
-    case 'C':
-      contrast = atoi (&argv[1][2]);
-      break;
+         case 'G':
+            gain = atoi (optarg);
+            break;
 
-    case 'S':
-      saturation = atoi (&argv[1][2]);
-      break;
+         case 'L':
+            list_cameras = 1;
+            break;
+         
+         case 'M':
+            format = V4L2_PIX_FMT_YUYV;
+            save_yuyv_data = 0;
+            break;
+         
+         case 'N':
+            camera_name = optarg;
+            break;
 
-    case 'G':
-      gain = atoi (&argv[1][2]);
-      break;
+         case 'Q':
+            nobuff = 1;
+            break;
 
-    case 'q':
-      quality = atoi (&argv[1][2]);
-      break;
+         case 'R':
+            rotate = 1;
+            break;
 
-    case 'L':
-      list_cameras = 1;
-      break;
+         case 'S':
+            saturation = atoi (optarg);
+            break;
+         
+         case 'T':
+            alarm_time = atoi(optarg);
+            break;
 
-    case 'R':
-      rotate = atoi (&argv[1][2]);
-      break;
+         case 'Z':
+            dbg = atoi(optarg);
+            break;
 
-    case 'h':
-      usage ();
-      break;
-
-   case 'T':
-      alarm_time = atoi(&argv[1][2]);
-      break;
-
-   case 'F':
-      initGPIO(0, atoi(&argv[1][2]), &flashGpio);
-      break;
-
-   case 'f':
-      flash_gpio_active_val = atoi(&argv[1][2]);
-      break;
-
-   case 'Q':
-      nobuff = 1;
-      break;
-
-    default:
-      fprintf (stderr, "Unknown option %s \n", argv[1]);
-      usage ();
-    }
-    ++argv;
-    --argc;
+     }
   }
 
-   atexit(flash_off);
+  atexit(flash_off);
 
   if (alarm_time > 0)
      alarm(alarm_time);
@@ -1119,38 +1103,6 @@ main (int argc, char *argv[])
       fprintf (stderr, "Debug exit 4\n");
    exit(0);
   }
-
-#if 0
-  //Reset all camera controls
-  v4l2ResetControl (videoIn, V4L2_CID_CONTRAST);
-  v4l2ResetControl (videoIn, V4L2_CID_SATURATION);
-  v4l2ResetControl (videoIn, V4L2_CID_GAIN);
-
-  if (contrast != 0) {
-    if (verbose >= 1)
-      fprintf (stderr, "Setting camera contrast to %d\n", contrast);
-    v4l2SetControl (videoIn, V4L2_CID_CONTRAST, contrast);
-  } else if (verbose >= 1) {
-    fprintf (stderr, "Camera contrast level is %d\n",
-	     v4l2GetControl (videoIn, V4L2_CID_CONTRAST));
-  }
-  if (saturation != 0) {
-    if (verbose >= 1)
-      fprintf (stderr, "Setting camera saturation to %d\n", saturation);
-    v4l2SetControl (videoIn, V4L2_CID_SATURATION, saturation);
-  } else if (verbose >= 1) {
-    fprintf (stderr, "Camera saturation level is %d\n",
-	     v4l2GetControl (videoIn, V4L2_CID_SATURATION));
-  }
-  if (gain != 0) {
-    if (verbose >= 1)
-      fprintf (stderr, "Setting camera gain to %d\n", gain);
-    v4l2SetControl (videoIn, V4L2_CID_GAIN, gain);
-  } else if (verbose >= 1) {
-    fprintf (stderr, "Camera gain level is %d\n",
-	     v4l2GetControl (videoIn, V4L2_CID_GAIN));
-  }
-#endif
 
   if (verbose >= 1)
     fprintf (stderr, "Before brightness\n");
@@ -1260,7 +1212,7 @@ main (int argc, char *argv[])
          wait_for_auto_exposure_control(videoIn, ov_autogain);
     }
   }
-   flash_off();
+  flash_off();
   gettimeofday(&stop_time, NULL);
   close_v4l2 (videoIn);
   free (videoIn);
