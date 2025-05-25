@@ -104,7 +104,8 @@ usage (void)
   fprintf (stderr, "-N\t\tSet the input camera to the given named camera\n");
   fprintf (stderr, "-R\t\tRotate cameras between images.\n");
   fprintf (stderr, "-T <seconds>\t\tTerminate the process after <seconds> seconds.  Uses SIGALRM.\n");
-  fprintf (stderr, "-o <filename>\tOutput filename(default: snap.jpg)\n");
+  fprintf (stderr, "-o <filename>\tOutput filename formax(default: <filename>.<cameraname>.<# in series>.<extention>)\n");
+  fprintf (stderr, "-O <filename>\tCompletly override output filename (yuv > ppm > jpg\n");
   fprintf (stderr, "-d <device>\tV4L2 Device(default: /dev/video0)\n");
   fprintf (stderr, "-D <integer>\tDelay (s) before taking first image\n");
   fprintf (stderr, "-F <integer>\tUse GPIO <integer> as flash\n");
@@ -727,6 +728,7 @@ main (int argc, char *argv[])
 {
   char *videodevice = "/dev/video0";
   char *outputfile = "snap";
+  char *outputfile_override = NULL;
   char *yuyv_file = NULL;
   char *post_capture_command[3];
   int format = V4L2_PIX_FMT_MJPEG;
@@ -773,7 +775,7 @@ main (int argc, char *argv[])
   post_capture_command[1] = NULL;
   post_capture_command[2] = NULL;
 
-  while((opt = getopt(argc, argv, ":b:c:d:f:hjmn:o:pq:rtvwx:y:A:B:C:D:F:G:LMN:QRS:T:Z:")) != -1) {
+  while((opt = getopt(argc, argv, ":b:c:d:f:hjmn:o:pq:rtvwx:y:A:B:C:D:F:G:LMN:O:QRS:T:Z:")) != -1) {
      switch(opt){
          case 'b':
             yuyv_file = optarg;
@@ -880,6 +882,10 @@ main (int argc, char *argv[])
          case 'N':
             camera_name = optarg;
             break;
+         
+         case 'O':
+            outputfile_override = optarg;
+            break;
 
          case 'Q':
             nobuff = 1;
@@ -914,7 +920,11 @@ main (int argc, char *argv[])
 
   if (verbose >= 1) {
     fprintf (stderr, "Using videodevice: %s\n", videodevice);
-    fprintf (stderr, "Saving images to: %s\n", outputfile);
+    if(outputfile_override){
+      fprintf (stderr, "Saving images to: %s\n", outputfile_override);
+    }else{
+      fprintf (stderr, "Saving images with prefix: %s\n", outputfile);
+    }
     fprintf (stderr, "Image size: %dx%d\n", width, height);
     fprintf (stderr, "Taking snapshot every %d seconds\n", delay);
     if (grabmethod == 1)
@@ -1063,10 +1073,17 @@ main (int argc, char *argv[])
     if (delay == 0 || image_cnt == target_img_cnt ||
                (difftime (time (NULL), ref_time) > delay)) {
       ref_time = img_time;
-
-      sprintf(outnameBuff, "%s.%s.%d.jpg", outputfile, cameraNames[cam_index], target_img_cnt - image_cnt);
-      sprintf(ppmOutnameBuff, "%s.%s.%d.ppm", outputfile, cameraNames[cam_index], target_img_cnt - image_cnt);
-      sprintf(yuvOutnameBuff, "%s.%s.%d.yuv", outputfile, cameraNames[cam_index], target_img_cnt - image_cnt);
+      
+         if(outputfile_override){
+            sprintf(outnameBuff, "%s", outputfile_override);
+            sprintf(ppmOutnameBuff, "%s", outputfile_override);
+            sprintf(yuvOutnameBuff, "%s", outputfile_override);
+         }else{
+            sprintf(outnameBuff, "%s.%s.%d.jpg", outputfile, cameraNames[cam_index], target_img_cnt - image_cnt);
+            sprintf(ppmOutnameBuff, "%s.%s.%d.ppm", outputfile, cameraNames[cam_index], target_img_cnt - image_cnt);
+            sprintf(yuvOutnameBuff, "%s.%s.%d.yuv", outputfile, cameraNames[cam_index], target_img_cnt - image_cnt);
+         }
+      
       if (verbose >= 1)
 	      fprintf (stderr, "Saving image to: %s / %s / %s\n", outnameBuff, yuvOutnameBuff, ppmOutnameBuff);
 	switch (videoIn->formatIn) {
@@ -1074,12 +1091,13 @@ main (int argc, char *argv[])
 	case V4L2_PIX_FMT_YVYU:
 	case V4L2_PIX_FMT_UYVY:
 	case V4L2_PIX_FMT_VYUY:
-      if (soft_compress_yuv && libjpeg_avail())
-	      error = error || compress_yuyv_to_jpeg (videoIn, outnameBuff, quality);
-      if (convert_yuv_to_ppm)
-         error = error || convert_yuyv_to_ppm(videoIn, ppmOutnameBuff);
       if (save_yuyv_data)
          error = error || save_yuyv(videoIn, yuvOutnameBuff, nobuff);
+      if (convert_yuv_to_ppm)
+         error = error || convert_yuyv_to_ppm(videoIn, ppmOutnameBuff);
+      if (soft_compress_yuv && libjpeg_avail())
+	      error = error || compress_yuyv_to_jpeg (videoIn, outnameBuff, quality);
+      
 	  break;
 
    case V4L2_PIX_FMT_MJPEG:
