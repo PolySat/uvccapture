@@ -1164,3 +1164,98 @@ main (int argc, char *argv[])
 
   return error;
 }
+
+/** Simple capture command to be used by payload processes */
+int simple_capture(char *outputfile_override, int brightness, int ov_autogain) {
+
+   char *videodevice = "/dev/video0";
+   int format = V4L2_PIX_FMT_YUYV;
+   int width = 320;
+   int height = 240;
+   struct vdIn *videoIn;
+   const char *camera_name = NULL;
+   char yuvOutnameBuff[1024];
+   int error = 0;
+   int nobuff = 0;
+
+   videoIn = (struct vdIn *) calloc (1, sizeof (struct vdIn));
+   if (init_videoIn (videoIn, (char *) videodevice) < 0)
+   {
+      fprintf(stderr, "Error in init_videoIn\n");
+      return 1;
+   }
+  
+   if (setup_cameras(videoIn)) {
+      perror("Error reading camera names");
+      return 2;
+   }
+
+   cam_index = v4l2GetInput(videoIn);
+   if (cam_index < 0) {
+      perror("Error reading camera index\n");
+      return 3;
+   }
+
+   if(width <= 0){
+      fprintf(stderr, "Invalid width, setting to defualt \n");
+      width = DEFAULT_WIDTH
+   }
+
+   if(height <= 0){
+      fprintf(stderr, "Invalid height, setting to defualt \n");
+      height = DEFAULT_HEIGHT
+   }
+
+   if (v4l2TryFormat(videoIn, width, height, format) < 0)
+   {
+      fprintf(stderr, "Error in v4l2TryFormat\n");
+   }
+
+   if (v4l2SetFormat(videoIn, width, height, format, grabmethod) < 0)
+   {
+      perror("Error in v4l2SetFormat");
+      return 4;
+   }
+
+   v4l2ResetControl (videoIn, V4L2_CID_BRIGHTNESS);
+
+   if (brightness != 0) {
+      if (verbose >= 1)
+         fprintf (stderr, "Setting camera brightness to %d\n", brightness);
+      v4l2SetControl (videoIn, V4L2_CID_BRIGHTNESS, brightness);
+   } 
+
+   flash_on();
+   wait_for_auto_exposure_control(videoIn, ov_autogain);
+
+   if (uvcGrab (videoIn) < 0) {
+      perror("Error grabbing");
+      close_v4l2 (videoIn);
+      free (videoIn);
+      return 5;
+   }
+
+   error = error || save_yuyv(videoIn, outputfile_override, nobuff);
+
+   videoIn->getPict = 0;
+
+   flash_off();
+   close_v4l2 (videoIn);
+   free (videoIn);
+
+   return error;
+}
+
+
+/** Thumbnail */
+/**
+// Only converting image?
+  if (yuyv_file) {
+     printf("*** Converting yuyv image\n\r");
+     if (libjpeg_avail())
+	     error = compress_yuyv_to_jpeg (videoIn, yuyv_file, quality);
+     close_v4l2 (videoIn);
+     free (videoIn);
+     return error;
+  }
+*/
