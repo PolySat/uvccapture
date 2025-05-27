@@ -47,8 +47,8 @@
 
 // #define JPEG_POSIX_DEST
 
-#define DEFAULT_WIDTH = 320
-#define DEFAULT_HEIGHT = 240
+#define DEFAULT_WIDTH 320
+#define DEFAULT_HEIGHT 240
 
 static const char version[] = VERSION;
 int run = 1;
@@ -128,7 +128,7 @@ usage (void)
   fprintf (stderr,
 	   "-n <integer>\tTake only <integer> images.  Default is 1.\n");
   fprintf (stderr, "Camera Settings:\n");
-  fprintf (stderr, "-A\tUse Auto Exposure")
+  fprintf (stderr, "-A\tUse Auto Exposure");
   fprintf (stderr, "-B <integer>\tBrightness\n");
   fprintf (stderr, "-C <integer>\tContrast [Not supported by current camera]\n");
   fprintf (stderr, "-S <integer>\tSaturation [Not supported by current camera]\n");
@@ -761,6 +761,8 @@ main (int argc, char *argv[])
   int dbg = 0;
   int nobuff = 0;
 
+  char opt;
+
   (void) regsignal (SIGINT, sigcatch);
   (void) regsignal (SIGQUIT, sigcatch);
   (void) regsignal (SIGKILL, sigcatch);
@@ -986,21 +988,20 @@ main (int argc, char *argv[])
    exit(0);
   }
 
-  if(width <= 0){
-     fprintf(stderr, "Invalid width, setting to defualt \n");
-     width = DEFAULT_WIDTH
-  }
-
-  if(height <= 0){
-     fprintf(stderr, "Invalid height, setting to defualt \n");
-     height = DEFAULT_HEIGHT
-  }
-
-
 
   if (v4l2TryFormat(videoIn, width, height, format) < 0)
   {
      fprintf(stderr, "Error in v4l2TryFormat\n");
+  }
+
+  if(width <= 0){
+     fprintf(stderr, "Invalid width, setting to defualt \n");
+     width = DEFAULT_WIDTH;
+  }
+
+  if(height <= 0){
+     fprintf(stderr, "Invalid height, setting to defualt \n");
+     height = DEFAULT_HEIGHT;
   }
 
   if (dbg == 2) {
@@ -1168,6 +1169,7 @@ main (int argc, char *argv[])
 /** Simple capture command to be used by payload processes */
 int simple_capture(char *outputfile_override, int brightness, int ov_autogain) {
 
+   int grabmethod = 1;
    char *videodevice = "/dev/video0";
    int format = V4L2_PIX_FMT_YUYV;
    int width = 320;
@@ -1177,6 +1179,7 @@ int simple_capture(char *outputfile_override, int brightness, int ov_autogain) {
    char yuvOutnameBuff[1024];
    int error = 0;
    int nobuff = 0;
+   int cam_index = -1;
 
    videoIn = (struct vdIn *) calloc (1, sizeof (struct vdIn));
    if (init_videoIn (videoIn, (char *) videodevice) < 0)
@@ -1196,19 +1199,20 @@ int simple_capture(char *outputfile_override, int brightness, int ov_autogain) {
       return 3;
    }
 
+   if (v4l2TryFormat(videoIn, width, height, format) < 0)
+   {
+      fprintf(stderr, "Error in v4l2TryFormat\n");
+   }
+
+
    if(width <= 0){
       fprintf(stderr, "Invalid width, setting to defualt \n");
-      width = DEFAULT_WIDTH
+      width = DEFAULT_WIDTH;
    }
 
    if(height <= 0){
       fprintf(stderr, "Invalid height, setting to defualt \n");
-      height = DEFAULT_HEIGHT
-   }
-
-   if (v4l2TryFormat(videoIn, width, height, format) < 0)
-   {
-      fprintf(stderr, "Error in v4l2TryFormat\n");
+      height = DEFAULT_HEIGHT;
    }
 
    if (v4l2SetFormat(videoIn, width, height, format, grabmethod) < 0)
@@ -1220,8 +1224,6 @@ int simple_capture(char *outputfile_override, int brightness, int ov_autogain) {
    v4l2ResetControl (videoIn, V4L2_CID_BRIGHTNESS);
 
    if (brightness != 0) {
-      if (verbose >= 1)
-         fprintf (stderr, "Setting camera brightness to %d\n", brightness);
       v4l2SetControl (videoIn, V4L2_CID_BRIGHTNESS, brightness);
    } 
 
