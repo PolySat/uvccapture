@@ -777,7 +777,7 @@ main (int argc, char *argv[])
   post_capture_command[1] = NULL;
   post_capture_command[2] = NULL;
 
-  while((opt = getopt(argc, argv, ":b:c:d:f:hjmn:o:pq:rtvwx:y:A:B:C:D:F:G:LMN:O:QRS:T:Z:")) != -1) {
+  while((opt = getopt(argc, argv, "b:c:d:f:hjmn:o:pq:rtvwx:y:A:B:C:D:F:G:LMN:O:QRS:T:Z:")) != -1) {
      switch(opt){
          case 'b':
             yuyv_file = optarg;
@@ -909,6 +909,19 @@ main (int argc, char *argv[])
             dbg = atoi(optarg);
             break;
 
+         case '?':
+            if (optopt == 'c')
+               fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+            else if (isprint (optopt))
+               fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+            else
+               fprintf (stderr,
+                        "Unknown option character `\\x%x'.\n",
+                        optopt);
+            return 1;
+         default:
+            fprintf("Error in getopt");
+            exit(9);
      }
   }
 
