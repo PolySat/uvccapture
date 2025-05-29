@@ -920,7 +920,7 @@ main (int argc, char *argv[])
                         optopt);
             return 1;
          default:
-            fprintf("Error in getopt");
+            fprintf(stderr, "Error in getopt");
             exit(9);
      }
   }
