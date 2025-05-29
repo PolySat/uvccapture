@@ -920,8 +920,8 @@ main (int argc, char *argv[])
                         optopt);
             return 1;
          default:
-            fprintf(stderr, "Error in getopt: %c\n", opt);
-            exit(9);
+            fprintf(stderr, "Error in getopt: %d\n", opt);
+            break;
      }
   }
 
