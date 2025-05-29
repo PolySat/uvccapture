@@ -761,7 +761,7 @@ main (int argc, char *argv[])
   int dbg = 0;
   int nobuff = 0;
 
-  char opt;
+  int opt;
 
   (void) regsignal (SIGINT, sigcatch);
   (void) regsignal (SIGQUIT, sigcatch);
