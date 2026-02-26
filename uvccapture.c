@@ -1128,7 +1128,8 @@ main (int argc, char *argv[])
          }
       
       if (verbose >= 1)
-	      fprintf (stderr, "Saving image to: %s / %s / %s\n", outnameBuff, yuvOutnameBuff, ppmOutnameBuff);
+	      fprintf (stderr, "Saving image to: %s / %s / %s / %s\n", 
+			      outnameBuff, rawOutnameBuff, yuvOutnameBuff, ppmOutnameBuff);
 	switch (videoIn->formatIn) {
 	case V4L2_PIX_FMT_YUYV:
 	case V4L2_PIX_FMT_YVYU:
