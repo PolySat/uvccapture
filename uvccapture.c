@@ -127,6 +127,8 @@ usage (void)
 	   "-D <integer>\tDelay <integer> seconds before capturing\n");
   fprintf (stderr,
 	   "-n <integer>\tTake only <integer> images.  Default is 1.\n");
+  fprintf (stderr,
+	   "-z \tTake raw capture, writes raw bayer BGGR 10-bit unpacked to 16-bits per color.\n");
   fprintf (stderr, "Camera Settings:\n");
   fprintf (stderr, "-A\tUse Auto Exposure");
   fprintf (stderr, "-B <integer>\tBrightness\n");
@@ -358,6 +360,26 @@ int save_yuyv(struct vdIn *vd, const char *filename, int nobuff)
    }
 
    printf("YUV Time: %ld.%06ld\n", end.tv_sec, end.tv_usec);
+
+   return 0;
+}
+
+
+int save_raw_bayer(struct vdIn *vd, const char *filename)
+{
+   int out;
+
+   out = open(filename, O_RDWR | O_CREAT | O_TRUNC, 0644);
+   if (out < 0) {
+      perror("Error opening raw bayer output file");
+      return -1;
+   }
+   if (vd->buf.bytesused != write(out, vd->framebuffer, vd->buf.bytesused)) {
+      perror("short raw bayer write");
+      close(out);
+      return -1;
+   }
+   close(out);
 
    return 0;
 }
@@ -753,6 +775,7 @@ main (int argc, char *argv[])
   char outnameBuff[1024];
   char ppmOutnameBuff[1024];
   char yuvOutnameBuff[1024];
+  char rawOutnameBuff[1024];
   int soft_compress_yuv = 0;
   int convert_yuv_to_ppm = 0;
   int alarm_time = -1;
@@ -806,6 +829,10 @@ main (int argc, char *argv[])
          case 'm':
             format = V4L2_PIX_FMT_YUYV;
             save_yuyv_data = 1;
+            break;
+
+         case 'z':
+            format = V4L2_PIX_FMT_SGRBG10;
             break;
          
          case 'n':
@@ -1092,10 +1119,12 @@ main (int argc, char *argv[])
             sprintf(outnameBuff, "%s", outputfile_override);
             sprintf(ppmOutnameBuff, "%s", outputfile_override);
             sprintf(yuvOutnameBuff, "%s", outputfile_override);
+            sprintf(rawOutnameBuff, "%s", outputfile_override);
          }else{
             sprintf(outnameBuff, "%s.%s.%d.jpg", outputfile, cameraNames[cam_index], target_img_cnt - image_cnt);
             sprintf(ppmOutnameBuff, "%s.%s.%d.ppm", outputfile, cameraNames[cam_index], target_img_cnt - image_cnt);
             sprintf(yuvOutnameBuff, "%s.%s.%d.yuv", outputfile, cameraNames[cam_index], target_img_cnt - image_cnt);
+            sprintf(rawOutnameBuff, "%s.%s.%d.raw", outputfile, cameraNames[cam_index], target_img_cnt - image_cnt);
          }
       
       if (verbose >= 1)
@@ -1112,6 +1141,9 @@ main (int argc, char *argv[])
       if (soft_compress_yuv && libjpeg_avail())
 	      error = error || compress_yuyv_to_jpeg (videoIn, outnameBuff, quality);
       
+	  break;
+	case V4L2_PIX_FMT_SGRBG10:
+     	      error = error || save_raw_bayer(videoIn, rawOutnameBuff);
 	  break;
 
    case V4L2_PIX_FMT_MJPEG:
