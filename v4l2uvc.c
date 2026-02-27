@@ -145,7 +145,7 @@ v4l2TryFormat (struct vdIn *vd, int width, int height,
 	     vd->fmt.fmt.pix.width, vd->fmt.fmt.pix.height);
   }
   if (format != vd->fmt.fmt.pix.pixelformat) {
-    fprintf (stderr, " pixelformat asked unavailable %d asked for %d \n",
+    fprintf (stderr, " pixelformat (144) asked unavailable %d asked for %d \n",
 	     vd->fmt.fmt.pix.pixelformat, format);
   }
 
@@ -340,7 +340,7 @@ int v4l2SetInputNum(struct vdIn *vd, int index)
          vd->height = vd->fmt.fmt.pix.height;
       }
       if (vd->formatIn != vd->fmt.fmt.pix.pixelformat) {
-         fprintf (stderr, " pixelformat asked unavailable %d asked for %d when changing cameras\n",
+         fprintf (stderr, " pixelformat (343) asked unavailable %d asked for %d when changing cameras\n",
 	         vd->fmt.fmt.pix.pixelformat, vd->formatIn);
          vd->formatIn = vd->fmt.fmt.pix.pixelformat;
       }
@@ -461,7 +461,7 @@ init_v4l2_format (struct vdIn *vd)
     //vd->formatIn = vd->fmt.fmt.pix.pixelformat;
   }
   if (vd->formatIn != vd->fmt.fmt.pix.pixelformat) {
-    fprintf (stderr, " pixelformat asked unavailable %d asked for %d \n",
+    fprintf (stderr, " pixelformat (464) asked unavailable %d asked for %d \n",
 	     vd->fmt.fmt.pix.pixelformat, vd->formatIn);
     vd->formatIn = vd->fmt.fmt.pix.pixelformat;
   }
