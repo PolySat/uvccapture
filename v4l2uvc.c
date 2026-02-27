@@ -178,7 +178,7 @@ v4l2SetFormat (struct vdIn *vd, int width, int height,
   /* alloc a temp buffer to reconstruct the pict */
   vd->framesizeIn = (vd->width * vd->height << 1);
   switch (vd->formatIn) {
-  case V4L2_PIX_FMT_SGRBG10:
+  case V4L2_PIX_FMT_SBGGR16:
 	  // 2 bytes per color
 	  vd->fbCap = vd->width * vd->height * 2;
 	  if (!vd->grabmethod)
@@ -570,7 +570,7 @@ uvcGrabRead (struct vdIn *vd)
       vd->formatIn != V4L2_PIX_FMT_VYUY &&
       vd->formatIn != V4L2_PIX_FMT_JPEG &&
       vd->formatIn != V4L2_PIX_FMT_MJPEG &&
-      vd->formatIn != V4L2_PIX_FMT_SGRBG10)
+      vd->formatIn != V4L2_PIX_FMT_SBGGR16)
      goto err;
 
   printf("Reading %d bytes!\n", vd->fbCap);
@@ -635,7 +635,7 @@ uvcGrab (struct vdIn *vd)
       video_disable (vd);
 
   switch (vd->formatIn) {
-  case V4L2_PIX_FMT_SGRBG10:
+  case V4L2_PIX_FMT_SBGGR16:
     vd->framebuffer = vd->mem[vd->buf.index];
     break;
   case V4L2_PIX_FMT_MJPEG:

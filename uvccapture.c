@@ -832,7 +832,7 @@ main (int argc, char *argv[])
             break;
 
          case 'z':
-            format = V4L2_PIX_FMT_SGRBG10;
+            format = V4L2_PIX_FMT_SBGGR16;
             break;
          
          case 'n':
@@ -1143,7 +1143,7 @@ main (int argc, char *argv[])
 	      error = error || compress_yuyv_to_jpeg (videoIn, outnameBuff, quality);
       
 	  break;
-	case V4L2_PIX_FMT_SGRBG10:
+	case V4L2_PIX_FMT_SBGGR16:
      	      error = error || save_raw_bayer(videoIn, rawOutnameBuff);
 	  break;
 
