@@ -1,1 +1,4 @@
-*.o uvccapture yuv_decode
+*.o 
+*.swp
+uvccapture 
+yuv_decode
