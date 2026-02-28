@@ -364,7 +364,7 @@ int save_yuyv(struct vdIn *vd, const char *filename, int nobuff)
    return 0;
 }
 
-
+/*
 int save_raw_bayer(struct vdIn *vd, const char *filename)
 {
    int out;
@@ -382,6 +382,40 @@ int save_raw_bayer(struct vdIn *vd, const char *filename)
    close(out);
 
    return 0;
+}
+*/
+
+int save_raw_bayer(struct vdIn *vd, const char *filename)
+{
+    int out;
+    uint8_t *copy;
+
+    out = open(filename, O_RDWR | O_CREAT | O_TRUNC, 0644);
+    if (out < 0) {
+        perror("Error opening raw bayer output file");
+        return -1;
+    }
+
+    copy = malloc(vd->buf.bytesused);
+    if (!copy) {
+        perror("malloc");
+        close(out);
+        return -1;
+    }
+
+    /* Snapshot immediately */
+    memcpy(copy, vd->framebuffer, vd->buf.bytesused);
+
+    if (vd->buf.bytesused != write(out, copy, vd->buf.bytesused)) {
+        perror("short raw bayer write");
+        free(copy);
+        close(out);
+        return -1;
+    }
+
+    free(copy);
+    close(out);
+    return 0;
 }
 
 int
