@@ -1119,7 +1119,7 @@ main (int argc, char *argv[])
 
   if (ov_manual_gain) {
     fprintf(stderr, "Setting manual gain to %d / 16\n", gain);
-    fprintf(stderr, "(note: max analog gain is 64x, digital makes up any remaining gain)\n");
+    fprintf(stderr, "(note: max analog gain is 16x, max gain is 64x, digital makes up any remaining gain)\n");
 
     v4l2SetControl(videoIn, V4L2_CID_GAIN, gain);
   } else {
