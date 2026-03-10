@@ -134,7 +134,7 @@ usage (void)
   fprintf (stderr, "-g <integer>\tSet manual gain to <integer> / 16. Up to max of 992 (/ 16)\n");
   fprintf (stderr, "            \tMax analog gain is 16x, remaining gain will be digital gain\n");
   fprintf (stderr, "Camera Settings:\n");
-  fprintf (stderr, "-A\tUse Auto Exposure, and how many additional seconds for auto exposure");
+  fprintf (stderr, "-A\tUse Auto Exposure, and how many additional seconds for auto exposure\n");
   fprintf (stderr, "-B <integer>\tBrightness, sets black level\n");
   fprintf (stderr, "-C <integer>\tContrast [Not implemented]\n");
   fprintf (stderr, "-S <integer>\tSaturation [Not implemented]\n");
@@ -831,6 +831,7 @@ main (int argc, char *argv[])
 	 case 'e':
 	    ov_manual_exposure = 1;
 	    exposure_ns = atoi(optarg);
+	    break;
 
          case 'f':
             flash_gpio_active_val = atoi(optarg);
@@ -839,6 +840,7 @@ main (int argc, char *argv[])
 	 case 'g':
 	    ov_manual_gain = 1;
 	    gain = atoi(optarg);
+	    break;
          
          case 'h':
             usage ();
