@@ -132,7 +132,7 @@ usage (void)
   fprintf (stderr, "-e <integer>\tSet manual exposure to <integer> nanoseconds.\n");
   fprintf (stderr, "            \tMax value is integer max or 20-bit unsigned max of VTS * sysclock_ns\n");
   fprintf (stderr, "-g <integer>\tSet manual gain to <integer> / 16. Up to max of 992 (/ 16)\n");
-  fprintf (stderr, "            \tMax analog gain is 16x, remaining gain will be digital gain\n");
+  fprintf (stderr, "            \tMax analog gain is 15.5x, remaining gain will be digital gain\n");
   fprintf (stderr, "Camera Settings:\n");
   fprintf (stderr, "-A\tUse Auto Exposure, and how many additional seconds for auto exposure\n");
   fprintf (stderr, "-B <integer>\tBrightness, sets black level\n");
@@ -1119,7 +1119,7 @@ main (int argc, char *argv[])
 
   if (ov_manual_gain) {
     fprintf(stderr, "Setting manual gain to %d / 16\n", gain);
-    fprintf(stderr, "(note: max analog gain is 16x, max gain is 64x, digital makes up any remaining gain)\n");
+    fprintf(stderr, "(note: max analog gain is 15.5x, max gain is 64x, digital makes up any remaining gain)\n");
 
     v4l2SetControl(videoIn, V4L2_CID_GAIN, gain);
   } else {
