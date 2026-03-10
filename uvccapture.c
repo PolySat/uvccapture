@@ -129,12 +129,15 @@ usage (void)
 	   "-n <integer>\tTake only <integer> images.  Default is 1.\n");
   fprintf (stderr,
 	   "-z \tTake raw capture, writes raw bayer BGGR 10-bit unpacked to 16-bits per color.\n");
+  fprintf (stderr, "-e <integer>\tSet manual exposure to <integer> nanoseconds.\n");
+  fprintf (stderr, "            \tMax value is integer max or 20-bit unsigned max of VTS * sysclock_ns\n");
+  fprintf (stderr, "-g <integer>\tSet manual gain to <integer> / 16. Up to max of 992 (/ 16)\n");
+  fprintf (stderr, "            \tMax analog gain is 16x, remaining gain will be digital gain\n");
   fprintf (stderr, "Camera Settings:\n");
-  fprintf (stderr, "-A\tUse Auto Exposure");
-  fprintf (stderr, "-B <integer>\tBrightness\n");
-  fprintf (stderr, "-C <integer>\tContrast [Not supported by current camera]\n");
-  fprintf (stderr, "-S <integer>\tSaturation [Not supported by current camera]\n");
-  fprintf (stderr, "-G <integer>\tGain [Not supported by current camera]\n");
+  fprintf (stderr, "-A\tUse Auto Exposure, and how many additional seconds for auto exposure");
+  fprintf (stderr, "-B <integer>\tBrightness, sets black level\n");
+  fprintf (stderr, "-C <integer>\tContrast [Not implemented]\n");
+  fprintf (stderr, "-S <integer>\tSaturation [Not implemented]\n");
   fprintf (stderr, "-Q\tUse direct mode when saving files (slower)\n");
   exit (8);
 }
@@ -716,32 +719,38 @@ convert_yuyv_to_ppm (struct vdIn *vd, char * filename)
   return (0);
 }
 
-int wait_for_auto_exposure_control(struct vdIn *videoIn, int ov_autogain)
+#define OV3642_CID_AEC_CONVERGE (V4L2_CID_PRIVATE_BASE + 1)
+
+int wait_for_auto_exposure_control(struct vdIn *videoIn, int ov_autoexpo)
 {
    struct timeval now, ag_end, select_delay;
 
-  if (ov_autogain) {
+   if (ov_autoexpo) {
+
+     // diable manual exposure control
+     v4l2ResetControl(videoIn, V4L2_CID_EXPOSURE);
+
      gettimeofday(&ag_end, NULL);
-     ag_end.tv_sec += ov_autogain;
+     ag_end.tv_sec += ov_autoexpo;
 
      do {
-      int val = v4l2GetControl (videoIn, (V4L2_CID_PRIVATE_BASE + 1));
-      if (val >= 0) {
-         printf("AEC Returned %d\n", val);
-         return 0;
-      }
-      if (val != -EAGAIN) {
-         printf("AEC returned error %s\n", strerror(errno));
-         return -errno;
-      }
-      select_delay.tv_sec = 0;
-      select_delay.tv_usec = 250000;
-      select(0, NULL, NULL, NULL, &select_delay);
-      gettimeofday(&now, NULL);
-   } while (timercmp(&now, &ag_end, <));
-  }
+       int val = v4l2GetControl (videoIn, OV3642_CID_AEC_CONVERGE);
+       if (val >= 0) {
+	 printf("AEC Returned %d\n", val);
+	 return 0;
+       }
+       if (val != -EAGAIN) {
+	 printf("AEC returned error %s\n", strerror(errno));
+	 return -errno;
+       }
+       select_delay.tv_sec = 0;
+       select_delay.tv_usec = 250000;
+       select(0, NULL, NULL, NULL, &select_delay);
+       gettimeofday(&now, NULL);
+     } while (timercmp(&now, &ag_end, <));
+   }
 
-  return 0;
+   return 0;
 }
 
 
@@ -757,11 +766,11 @@ main (int argc, char *argv[])
   int grabmethod = 1;
   int width = 320;
   int height = 240;
-  int brightness = 0, contrast = 0, saturation = 0, gain = 0;
+  int brightness = 0, contrast = 0, saturation = 0;
   int verbose = 0;
   int delay = 0;
   int quality = 95;
-  int ov_autogain = 0;
+  int ov_autoexpo = 0;
   int post_capture_command_wait = 0;
   time_t ref_time, img_time;
   struct vdIn *videoIn;
@@ -783,6 +792,10 @@ main (int argc, char *argv[])
   int error = 0;
   int dbg = 0;
   int nobuff = 0;
+  int ov_manual_exposure = 0;
+  int ov_manual_gain = 0;
+  int exposure_ns = 0;
+  int gain = 0;
 
   int opt;
 
@@ -800,8 +813,9 @@ main (int argc, char *argv[])
   post_capture_command[1] = NULL;
   post_capture_command[2] = NULL;
 
-  while((opt = getopt(argc, argv, "b:c:d:f:hjmn:o:pq:rtvwzx:y:A:B:C:D:F:G:LMN:O:QRS:T:Z:")) != -1) {
+  while((opt = getopt(argc, argv, "b:c:d:e:f:g:hjmn:o:pq:rtvwzx:y:A:B:C:D:F:LMN:O:QRS:T:Z:")) != -1) {
      switch(opt){
+
          case 'b':
             yuyv_file = optarg;
             break;
@@ -814,9 +828,17 @@ main (int argc, char *argv[])
             videodevice = optarg;
             break;
 
+	 case 'e':
+	    ov_manual_exposure = 1;
+	    exposure_ns = atoi(optarg);
+
          case 'f':
             flash_gpio_active_val = atoi(optarg);
             break;
+
+	 case 'g':
+	    ov_manual_gain = 1;
+	    gain = atoi(optarg);
          
          case 'h':
             usage ();
@@ -876,7 +898,7 @@ main (int argc, char *argv[])
             break;
 
          case 'A':
-            ov_autogain = 1;
+            ov_autoexpo = atoi (optarg);
             break;
 
          case 'B':
@@ -893,10 +915,6 @@ main (int argc, char *argv[])
 
          case 'F':
             initGPIO(0, atoi(optarg), &flashGpio);
-            break;
-
-         case 'G':
-            gain = atoi (optarg);
             break;
 
          case 'L':
@@ -1079,17 +1097,38 @@ main (int argc, char *argv[])
   if (brightness != 0) {
     if (verbose >= 1)
       fprintf (stderr, "Setting camera brightness to %d\n", brightness);
+
+    // black level
     v4l2SetControl (videoIn, V4L2_CID_BRIGHTNESS, brightness);
   } else if (verbose >= 1) {
     fprintf (stderr, "Camera brightness level is %d\n",
 	     v4l2GetControl (videoIn, V4L2_CID_BRIGHTNESS));
   }
 
-  if (verbose >= 1)
-    fprintf (stderr, "before AEC %d\n", ov_autogain);
+  if (ov_manual_exposure) {
+    fprintf(stderr, "Setting manual exposure to %dns\n", exposure_ns);
+    fprintf(stderr, "(note: exposure may be clamped depending on camera clock rate and line width)\n");
+    ov_autoexpo = 0;
 
-   flash_on();
-  wait_for_auto_exposure_control(videoIn, ov_autogain);
+    v4l2SetControl(videoIn, V4L2_CID_EXPOSURE, exposure_ns);
+  } else {
+    v4l2ResetControl(videoIn, V4L2_CID_EXPOSURE);
+  }
+
+  if (ov_manual_gain) {
+    fprintf(stderr, "Setting manual gain to %d / 16\n", gain);
+    fprintf(stderr, "(note: max analog gain is 64x, digital makes up any remaining gain)\n");
+
+    v4l2SetControl(videoIn, V4L2_CID_GAIN, gain);
+  } else {
+    v4l2ResetControl(videoIn, V4L2_CID_GAIN);
+  }
+
+  if (verbose >= 1)
+    fprintf (stderr, "before AEC %d\n", ov_autoexpo);
+
+  flash_on();
+  wait_for_auto_exposure_control(videoIn, ov_autoexpo);
 
   if (verbose >= 1)
     fprintf (stderr, "before start delay %d\n", start_delay);
@@ -1191,7 +1230,7 @@ main (int argc, char *argv[])
          }
          */
       }
-         wait_for_auto_exposure_control(videoIn, ov_autogain);
+         wait_for_auto_exposure_control(videoIn, ov_autoexpo);
     }
   }
   flash_off();
@@ -1213,7 +1252,7 @@ main (int argc, char *argv[])
 }
 
 /** Simple capture command to be used by payload processes */
-int simple_capture(char *outputfile_override, int brightness, int ov_autogain) {
+int simple_capture(char *outputfile_override, int brightness, int ov_autoexpo) {
 
    int grabmethod = 1;
    char *videodevice = "/dev/video0";
@@ -1274,7 +1313,7 @@ int simple_capture(char *outputfile_override, int brightness, int ov_autogain) {
    } 
 
    flash_on();
-   wait_for_auto_exposure_control(videoIn, ov_autogain);
+   wait_for_auto_exposure_control(videoIn, ov_autoexpo);
 
    if (uvcGrab (videoIn) < 0) {
       perror("Error grabbing");
