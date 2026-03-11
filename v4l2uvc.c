@@ -682,9 +682,11 @@ close_v4l2 (struct vdIn *vd)
 {
   int i;
 
-  if (vd->isstreaming && vd->buf.index != -1) {
-     vd->framebuffer = NULL;
-     ioctl (vd->fd, VIDIOC_QBUF, &vd->buf);
+  if (vd->buf.index != -1) {
+    if (vd->isstreaming)
+      ioctl (vd->fd, VIDIOC_QBUF, &vd->buf);
+    vd->framebuffer = NULL;
+    vd->buf.index = -1;
   }
 
   if (vd->isstreaming)
@@ -700,12 +702,15 @@ close_v4l2 (struct vdIn *vd)
   if (vd->tmpbuffer)
     free (vd->tmpbuffer);
   vd->tmpbuffer = NULL;
-  if (vd->framebuffer)
+
+  if (!vd->grabmethod && vd->framebuffer)
    free (vd->framebuffer);
   vd->framebuffer = NULL;
+
   free (vd->videodevice);
   free (vd->status);
   free (vd->pictName);
+
   vd->videodevice = NULL;
   vd->status = NULL;
   vd->pictName = NULL;
