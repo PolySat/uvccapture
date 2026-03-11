@@ -682,7 +682,7 @@ close_v4l2 (struct vdIn *vd)
 {
   int i;
 
-  if (vd->buf.index != -1) {
+  if (vd->isstreaming && vd->buf.index != -1) {
      vd->framebuffer = NULL;
      ioctl (vd->fd, VIDIOC_QBUF, &vd->buf);
   }
