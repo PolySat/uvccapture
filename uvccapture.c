@@ -1113,7 +1113,6 @@ main (int argc, char *argv[])
   }
 
   if (ov_manual_exposure) {
-    fprintf(stderr, "Setting manual exposure to %dns\n", exposure_ns);
     fprintf(stderr, "(note: exposure may be clamped depending on camera clock rate and line width)\n");
     ov_autoexpo = 0;
 
@@ -1125,8 +1124,10 @@ main (int argc, char *argv[])
 
     if (exposure_ms >= 0) {
     	v4l2SetControl(videoIn, V4L2_CID_EXPOSURE, -exposure_ms);
+	fprintf(stderr, "Setting manual exposure to %dms\n", exposure_ms);
     } else {
     	v4l2SetControl(videoIn, V4L2_CID_EXPOSURE, exposure_ns);
+	fprintf(stderr, "Setting manual exposure to %dns\n", exposure_ns);
     }
 
   } else {
