@@ -129,8 +129,8 @@ usage (void)
 	   "-n <integer>\tTake only <integer> images.  Default is 1.\n");
   fprintf (stderr,
 	   "-z \tTake raw capture, writes raw bayer BGGR 10-bit unpacked to 16-bits per color.\n");
+  fprintf (stderr, "-a <integer>\tSet manual exposure to <integer> milliseconds... MUTUALLY EXCLUSIVE WITH e\n");
   fprintf (stderr, "-e <integer>\tSet manual exposure to <integer> nanoseconds.\n");
-  fprintf (stderr, "            \tMax value is integer max or 20-bit unsigned max of VTS * sysclock_ns\n");
   fprintf (stderr, "-g <integer>\tSet manual gain to <integer> / 16. Up to max of 992 (/ 16)\n");
   fprintf (stderr, "            \tMax analog gain is 15.5x, remaining gain will be digital gain\n");
   fprintf (stderr, "Camera Settings:\n");
@@ -795,6 +795,7 @@ main (int argc, char *argv[])
   int ov_manual_exposure = 0;
   int ov_manual_gain = 0;
   int exposure_ns = 0;
+  int exposure_ms = -1;
   int gain = 0;
 
   int opt;
@@ -813,8 +814,12 @@ main (int argc, char *argv[])
   post_capture_command[1] = NULL;
   post_capture_command[2] = NULL;
 
-  while((opt = getopt(argc, argv, "b:c:d:e:f:g:hjmn:o:pq:rtvwzx:y:A:B:C:D:F:LMN:O:QRS:T:Z:")) != -1) {
+  while((opt = getopt(argc, argv, "a:b:c:d:e:f:g:hjmn:o:pq:rtvwzx:y:A:B:C:D:F:LMN:O:QRS:T:Z:")) != -1) {
      switch(opt){
+         case 'a':
+	    ov_manual_exposure = 1;
+	    exposure_ms = atoi(optarg);
+            break;
 
          case 'b':
             yuyv_file = optarg;
@@ -1112,7 +1117,18 @@ main (int argc, char *argv[])
     fprintf(stderr, "(note: exposure may be clamped depending on camera clock rate and line width)\n");
     ov_autoexpo = 0;
 
-    v4l2SetControl(videoIn, V4L2_CID_EXPOSURE, exposure_ns);
+    // special case, -1 is used as a reset value not as ms
+    if (exposure_ms == 1) {
+	exposure_ns = 1000000;
+	exposure_ms = -1;
+    }
+
+    if (exposure_ms >= 0) {
+    	v4l2SetControl(videoIn, V4L2_CID_EXPOSURE, -exposure_ms);
+    } else {
+    	v4l2SetControl(videoIn, V4L2_CID_EXPOSURE, exposure_ns);
+    }
+
   } else {
     v4l2ResetControl(videoIn, V4L2_CID_EXPOSURE);
   }
